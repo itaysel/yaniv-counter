@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14251f">
+  <meta name="description" content="מונה נקודות פשוט למשחק יניב">
+  <title>מונה יניב</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Yaniv counter home">
+      <span class="brand-mark" aria-hidden="true">Y</span>
+      <span data-i18n="appName">מונה יניב</span>
+    </a>
+    <div class="topbar-actions">
+      <button id="language-button" class="icon-button language-button" type="button" aria-label="English">EN</button>
+      <button id="settings-button" class="icon-button hidden" type="button" data-i18n-aria="settings" aria-label="הגדרות">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Zm7.4-2.4c.04-.36.06-.73.06-1.1s-.02-.74-.07-1.1l2.03-1.58-1.92-3.33-2.39.96a8.2 8.2 0 0 0-1.9-1.1L14.85 3h-3.84l-.36 2.55c-.68.28-1.32.65-1.9 1.1l-2.39-.96-1.92 3.33 2.03 1.58c-.05.36-.07.73-.07 1.1s.02.74.07 1.1l-2.03 1.58 1.92 3.33 2.39-.96c.58.45 1.22.82 1.9 1.1l.36 2.55h3.84l.36-2.55a8.2 8.2 0 0 0 1.9-1.1l2.39.96 1.92-3.33-2.02-1.58Z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section id="setup-view" class="setup-view">
+      <div class="hero-copy">
+        <span class="eyebrow" data-i18n="eyebrow">משחק קליל. ניקוד מדויק.</span>
+        <h1 data-i18n="setupTitle">מי משחק היום?</h1>
+        <p data-i18n="setupSubtitle">הוסיפו לפחות שני שחקנים והתחילו לספור.</p>
+      </div>
+
+      <form id="setup-form" class="panel setup-panel">
+        <div id="player-inputs" class="player-inputs"></div>
+        <button id="add-player-button" class="text-button" type="button">
+          <span aria-hidden="true">＋</span>
+          <span data-i18n="addPlayer">הוספת שחקן</span>
+        </button>
+        <button class="primary-button wide" type="submit" data-i18n="startGame">מתחילים לשחק</button>
+      </form>
+    </section>
+
+    <section id="game-view" class="game-view hidden">
+      <div class="game-heading">
+        <div>
+          <span class="eyebrow" data-i18n="currentGame">המשחק הנוכחי</span>
+          <h1 data-i18n="scoreboard">לוח תוצאות</h1>
+        </div>
+        <button id="new-game-button" class="quiet-button" type="button" data-i18n="newGame">משחק חדש</button>
+      </div>
+
+      <div id="score-grid" class="score-grid" aria-live="polite"></div>
+
+      <button id="round-button" class="primary-button round-button" type="button">
+        <span class="round-button-icon" aria-hidden="true">＋</span>
+        <span data-i18n="roundResults">תוצאות סיבוב</span>
+      </button>
+
+      <section class="history-section">
+        <div class="section-heading">
+          <h2 data-i18n="history">היסטוריה</h2>
+          <button id="undo-button" class="text-button compact hidden" type="button" data-i18n="undoLast">ביטול סיבוב אחרון</button>
+        </div>
+        <div id="history-list" class="history-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="round-dialog" class="sheet">
+    <form id="round-form" method="dialog">
+      <div class="sheet-header">
+        <div>
+          <span id="round-number-label" class="eyebrow"></span>
+          <h2 data-i18n="roundResults">תוצאות סיבוב</h2>
+        </div>
+        <button class="close-button" type="button" data-close="round-dialog" data-i18n-aria="close" aria-label="סגירה">×</button>
+      </div>
+
+      <fieldset>
+        <legend data-i18n="whoCalledYaniv">מי הכריז יניב?</legend>
+        <div id="winner-options" class="choice-grid"></div>
+      </fieldset>
+
+      <button id="asaf-toggle" class="option-button" type="button" aria-expanded="false">
+        <span class="option-icon" aria-hidden="true">⚡</span>
+        <span>
+          <strong data-i18n="markAsaf">היה אסף</strong>
+          <small data-i18n="markAsafHint">סמנו מי עשה אסף</small>
+        </span>
+        <span class="chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div id="asaf-area" class="collapsible hidden">
+        <label for="asaf-select" data-i18n="whoAsaf">מי עשה אסף?</label>
+        <select id="asaf-select"></select>
+      </div>
+
+      <label id="zero-win-option" class="toggle-card">
+        <span>
+          <strong data-i18n="zeroWin">ניצחון עם 0</strong>
+          <small data-i18n="zeroWinHint">10- נקודות למנצח</small>
+        </span>
+        <input id="zero-win-input" type="checkbox">
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <fieldset class="points-fieldset">
+        <legend data-i18n="playerPoints">נקודות השחקנים</legend>
+        <p class="field-hint" data-i18n="pointsHint">הזינו את ערך הקלפים של מי שלא ניצח</p>
+        <div id="points-inputs" class="number-input-list"></div>
+      </fieldset>
+
+      <button id="custom-toggle" class="text-button" type="button" aria-expanded="false">
+        <span aria-hidden="true">±</span>
+        <span data-i18n="customAdjustment">התאמה ידנית</span>
+      </button>
+      <div id="custom-area" class="collapsible hidden">
+        <p class="field-hint" data-i18n="customHint">הוסיפו או הפחיתו נקודות לכל שחקן</p>
+        <div id="custom-inputs" class="number-input-list"></div>
+      </div>
+
+      <div id="round-error" class="form-error" role="alert"></div>
+      <button class="primary-button wide" type="submit" data-i18n="saveRound">שמירת הסיבוב</button>
+    </form>
+  </dialog>
+
+  <dialog id="settings-dialog" class="sheet settings-sheet">
+    <form method="dialog">
+      <div class="sheet-header">
+        <div>
+          <span class="eyebrow" data-i18n="gameRules">חוקי המשחק</span>
+          <h2 data-i18n="settings">הגדרות</h2>
+        </div>
+        <button class="close-button" type="button" data-close="settings-dialog" data-i18n-aria="close" aria-label="סגירה">×</button>
+      </div>
+      <div id="settings-list" class="settings-list"></div>
+      <p class="settings-note" data-i18n="settingsNote">שינוי חוק מחשב מחדש את כל הסיבובים במשחק.</p>
+      <button class="primary-button wide" type="button" data-close="settings-dialog" data-i18n="done">סיום</button>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
