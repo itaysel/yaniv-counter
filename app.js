@@ -77,7 +77,12 @@
       repeatApplied: "מספר חוזר",
       fiftyApplied: "כפולה של 50",
       threeWinsApplied: "3 ניצחונות",
-      asafApplied: "עונש אסף"
+      asafApplied: "עונש אסף",
+      playsFirst: "משחק/ת ראשון/ה",
+      decreaseTen: "הפחתת 10 נקודות",
+      decreaseOne: "הפחתת נקודה",
+      increaseOne: "הוספת נקודה",
+      increaseTen: "הוספת 10 נקודות"
     },
     en: {
       appName: "Yaniv Counter",
@@ -145,7 +150,12 @@
       repeatApplied: "repeating number",
       fiftyApplied: "multiple of 50",
       threeWinsApplied: "3 wins",
-      asafApplied: "Asaf penalty"
+      asafApplied: "Asaf penalty",
+      playsFirst: "plays first",
+      decreaseTen: "Subtract 10 points",
+      decreaseOne: "Subtract 1 point",
+      increaseOne: "Add 1 point",
+      increaseTen: "Add 10 points"
     }
   };
 
@@ -158,7 +168,9 @@
   ];
 
   let state = loadState();
-  let setupRows = ["", ""];
+  let setupRows = state.previousGame && Array.isArray(state.previousGame.players)
+    ? state.previousGame.players.slice()
+    : ["", ""];
   let toastTimer;
 
   const elements = {
@@ -198,7 +210,8 @@
       language: language || "he",
       players: [],
       rounds: [],
-      settings: Object.assign({}, DEFAULT_SETTINGS)
+      settings: Object.assign({}, DEFAULT_SETTINGS),
+      previousGame: null
     };
   }
 
@@ -216,7 +229,8 @@
         language: saved.language === "en" ? "en" : "he",
         players: saved.players.filter(isValidPlayer),
         rounds: saved.rounds,
-        settings: Object.assign({}, DEFAULT_SETTINGS, saved.settings || {})
+        settings: Object.assign({}, DEFAULT_SETTINGS, saved.settings || {}),
+        previousGame: saved.previousGame || null
       };
     } catch (error) {
       try {
@@ -305,6 +319,15 @@
       input.addEventListener("input", function () {
         setupRows[index] = input.value;
       });
+      if (
+        state.previousGame &&
+        state.previousGame.winnerName &&
+        value.trim().toLocaleLowerCase() === state.previousGame.winnerName.toLocaleLowerCase()
+      ) {
+        row.classList.add("previous-winner");
+        const marker = createElement("span", "previous-winner-marker", "★ " + t("playsFirst"));
+        row.append(marker);
+      }
       const remove = createElement("button", "remove-player", "×");
       remove.type = "button";
       remove.setAttribute("aria-label", t("removePlayer"));
@@ -339,12 +362,15 @@
         const id = player.id;
         let delta = 0;
         scoreReductionApplied[id] = false;
-        if (id === effectiveWinnerId) {
+        if (round.asafPlayerId) {
+          delta = numberOrZero(round.points && round.points[id]);
+          if (id === round.yanivPlayerId && state.settings.asafPenalty) {
+            delta += 30;
+            events.push({ playerId: id, type: "asafApplied" });
+          }
+        } else if (id === effectiveWinnerId) {
           delta = round.zeroWin && !round.asafPlayerId ? -10 : 0;
           scoreReductionApplied[id] = delta < 0;
-        } else if (round.asafPlayerId && id === round.yanivPlayerId) {
-          delta = state.settings.asafPenalty ? 30 : 0;
-          if (state.settings.asafPenalty) events.push({ playerId: id, type: "asafApplied" });
         } else {
           delta = numberOrZero(round.points && round.points[id]);
         }
@@ -457,7 +483,16 @@
       const name = createElement("div", "score-name", player.name);
       const value = createElement("div", "score-value", String(score));
       const streak = game.streaks[player.id] || 0;
-      const meta = createElement("div", "score-meta", streak > 1 ? t("streak") + ": " + streak : "");
+      const startsNext = (
+        state.rounds.length === 0 &&
+        state.previousGame &&
+        state.previousGame.winnerName === player.name
+      );
+      const meta = createElement(
+        "div",
+        "score-meta" + (startsNext ? " plays-first" : ""),
+        startsNext ? "★ " + t("playsFirst") : streak > 1 ? t("streak") + ": " + streak : ""
+      );
       card.append(name, value, meta);
       elements.scoreGrid.append(card);
     });
@@ -493,11 +528,18 @@
       });
       if (eventLabels.length) detail += " · " + eventLabels.join(", ");
       const small = createElement("small", "", detail);
-      const delta = result.deltas[result.effectiveWinnerId];
-      const deltaText = delta > 0 ? "+" + delta : String(delta);
-      const deltaElement = createElement("span", "round-delta", deltaText);
+      const roundScores = createElement("div", "round-scores");
+      state.players.forEach(function (player) {
+        const delta = result.deltas[player.id];
+        const score = createElement("span", "round-player-score");
+        score.append(
+          createElement("span", "", player.name),
+          createElement("strong", "", delta > 0 ? "+" + delta : String(delta))
+        );
+        roundScores.append(score);
+      });
       summary.append(title, small);
-      item.append(roundIndex, summary, deltaElement);
+      item.append(roundIndex, summary, roundScores);
       elements.historyList.append(item);
     });
   }
@@ -568,12 +610,12 @@
       option.value = player.id;
       elements.asafSelect.append(option);
 
-      elements.pointsInputs.append(createNumberRow(player, "points", "0", 0, 999));
+      elements.pointsInputs.append(createNumberRow(player, "points", "0", 0, 999, true));
       elements.customInputs.append(createNumberRow(player, "custom", "0", -999, 999));
     });
   }
 
-  function createNumberRow(player, prefix, value, min, max) {
+  function createNumberRow(player, prefix, value, min, max, useStepper) {
     const row = createElement("div", "number-input-row");
     row.dataset.playerId = player.id;
     const avatar = createElement("span", "player-avatar", player.name.trim().charAt(0).toUpperCase());
@@ -588,7 +630,31 @@
     input.name = prefix + "-" + player.id;
     input.id = prefix + "-" + player.id;
     label.htmlFor = input.id;
-    row.append(avatar, label, input);
+    row.append(avatar, label);
+    if (useStepper) {
+      input.readOnly = true;
+      const stepper = createElement("div", "score-stepper");
+      [
+        [-10, t("decreaseTen")],
+        [-1, t("decreaseOne")],
+        [1, t("increaseOne")],
+        [10, t("increaseTen")]
+      ].forEach(function (stepDefinition) {
+        const amount = stepDefinition[0];
+        const button = createElement("button", "step-button", amount > 0 ? "+" + amount : String(amount));
+        button.type = "button";
+        button.setAttribute("aria-label", stepDefinition[1] + " — " + player.name);
+        button.addEventListener("click", function () {
+          const nextValue = Math.max(min, Math.min(max, numberOrZero(input.value) + amount));
+          input.value = String(nextValue);
+        });
+        stepper.append(button);
+      });
+      stepper.insertBefore(input, stepper.children[2]);
+      row.append(stepper);
+    } else {
+      row.append(input);
+    }
     return row;
   }
 
@@ -596,28 +662,29 @@
     const yanivId = getSelectedYanivId();
     const asafEnabled = !elements.asafArea.classList.contains("hidden");
     const asafId = asafEnabled ? elements.asafSelect.value : "";
-    const effectiveWinnerId = asafId || yanivId;
-
     elements.asafSelect.querySelectorAll("option").forEach(function (option) {
       option.disabled = option.value !== "" && option.value === yanivId;
     });
     if (asafId === yanivId) elements.asafSelect.value = "";
 
     elements.zeroInput.disabled = asafEnabled;
-    elements.zeroOption.classList.toggle("disabled", asafEnabled);
+    elements.zeroOption.classList.toggle("hidden", asafEnabled);
     if (asafEnabled) elements.zeroInput.checked = false;
 
     elements.pointsInputs.querySelectorAll(".number-input-row").forEach(function (row) {
       const id = row.dataset.playerId;
       const input = row.querySelector("input");
-      const isWinner = id === effectiveWinnerId;
+      const isWinner = !asafEnabled && id === yanivId;
       const isPenalizedCaller = asafEnabled && id === yanivId;
-      row.classList.toggle("is-winner", isWinner || isPenalizedCaller);
-      input.disabled = isWinner || isPenalizedCaller;
+      row.classList.toggle("is-winner", isWinner);
+      input.disabled = isWinner;
+      row.querySelectorAll(".step-button").forEach(function (button) {
+        button.disabled = isWinner;
+      });
       if (input.disabled) input.value = "0";
       const label = row.querySelector("label");
       const player = findPlayer(id);
-      label.textContent = player.name + (isWinner ? " · " + t("winner") : isPenalizedCaller ? " · " + t("yanivPenalty") : "");
+      label.textContent = player.name + (isWinner ? " · " + t("winner") : isPenalizedCaller ? " · +" + (state.settings.asafPenalty ? "30" : "0") : "");
     });
   }
 
@@ -759,8 +826,19 @@
   elements.newGameButton.addEventListener("click", function () {
     if (!window.confirm(t("confirmNewGame"))) return;
     const language = state.language;
+    const game = replayGame();
+    const lastResult = game.rounds[game.rounds.length - 1];
+    const previousGame = {
+      players: state.players.map(function (player) {
+        return player.name;
+      }),
+      winnerName: lastResult
+        ? findPlayer(lastResult.effectiveWinnerId).name
+        : state.previousGame && state.previousGame.winnerName || ""
+    };
     state = emptyState(language);
-    setupRows = ["", ""];
+    state.previousGame = previousGame;
+    setupRows = previousGame.players.slice();
     saveState();
     render();
   });

@@ -184,6 +184,20 @@ h2 {
   align-items: center;
 }
 
+.previous-winner {
+  position: relative;
+  margin-top: 20px;
+}
+
+.previous-winner-marker {
+  position: absolute;
+  inset-inline-start: 46px;
+  bottom: calc(100% + 4px);
+  color: var(--orange);
+  font-size: .72rem;
+  font-weight: 800;
+}
+
 .player-number,
 .player-avatar {
   width: 36px;
@@ -348,6 +362,11 @@ input[type="number"] {
   font-size: .78rem;
 }
 
+.score-meta.plays-first {
+  color: var(--orange);
+  font-weight: 800;
+}
+
 .round-button {
   width: min(100%, 360px);
   margin: 24px auto 46px;
@@ -395,7 +414,7 @@ input[type="number"] {
 
 .history-item {
   display: grid;
-  grid-template-columns: 42px 1fr auto;
+  grid-template-columns: 42px 1fr;
   align-items: center;
   gap: 12px;
   padding: 13px 15px;
@@ -426,10 +445,27 @@ input[type="number"] {
   color: var(--muted);
 }
 
-.round-delta {
+.round-scores {
+  grid-column: 1 / -1;
   direction: ltr;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.round-player-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 9px;
+  color: var(--muted);
+  background: var(--paper);
+  font-size: .74rem;
+}
+
+.round-player-score strong {
   color: var(--orange);
-  font-weight: 800;
 }
 
 dialog {
@@ -655,7 +691,42 @@ legend {
 }
 
 .number-input-row {
-  grid-template-columns: 38px 1fr 92px;
+  grid-template-columns: 38px minmax(72px, 1fr) auto;
+}
+
+.score-stepper {
+  direction: ltr;
+  display: grid;
+  grid-template-columns: repeat(2, 42px) 56px repeat(2, 42px);
+  gap: 4px;
+}
+
+.score-stepper input {
+  min-height: 42px;
+  padding: 0 4px;
+  border-radius: 10px;
+}
+
+.step-button {
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--green-dark);
+  background: var(--surface);
+  font-size: .78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.step-button:active {
+  background: var(--mint);
+}
+
+.step-button:disabled {
+  cursor: default;
+  opacity: .45;
 }
 
 .number-input-row label {
@@ -761,13 +832,87 @@ legend {
 
   .sheet {
     width: 100%;
-    max-height: 92vh;
+    max-height: 100vh;
+    max-height: 100dvh;
     margin: auto 0 0;
     border-radius: 24px 24px 0 0;
   }
 
   .sheet form {
-    padding: 21px 18px calc(20px + env(safe-area-inset-bottom));
+    padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .number-input-row {
+    grid-template-columns: 30px minmax(48px, 1fr) 195px;
+    gap: 6px;
+  }
+
+  .number-input-row .player-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+  }
+
+  .score-stepper {
+    grid-template-columns: repeat(2, 36px) 43px repeat(2, 36px);
+    gap: 2px;
+  }
+
+  .score-stepper input,
+  .step-button {
+    min-width: 0;
+    min-height: 36px;
+    height: 36px;
+    font-size: .72rem;
+  }
+
+  .sheet-header {
+    margin-bottom: 12px;
+  }
+
+  .sheet-header h2 {
+    font-size: 1.45rem;
+  }
+
+  .sheet fieldset {
+    margin-bottom: 12px;
+  }
+
+  .sheet legend {
+    margin-bottom: 6px;
+  }
+
+  .sheet .option-button,
+  .sheet .toggle-card {
+    min-height: 50px;
+    margin-bottom: 7px;
+    padding: 7px 10px;
+  }
+
+  .sheet .option-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .sheet .points-fieldset {
+    margin-top: 12px;
+  }
+
+  .sheet .points-fieldset .field-hint {
+    display: none;
+  }
+
+  .sheet .number-input-list {
+    gap: 6px;
+  }
+
+  .sheet #custom-toggle {
+    padding: 8px 2px;
+  }
+
+  .sheet .form-error {
+    min-height: 12px;
+    margin-bottom: 4px;
   }
 }
 
