@@ -1,17 +1,14 @@
-# Yaniv Counter
+# Yaniv Counter 2
 
-A dependency-free, mobile-first Yaniv score counter with Hebrew/RTL and English support.
+A separate, paper-inspired Yaniv score-sheet prototype.
 
-Open `index.html` in a browser or serve this directory with any static web server. Games and settings are saved in the browser's local storage.
+Open `index.html` directly in a browser. The game is stored in that browser's local storage.
 
-## Scoring behavior
+## Flow
 
-- When Asaf is marked, every player's entered card value is added. The Yaniv caller also receives 30 points when the rule is enabled, and the Asaf player counts as the round winner.
-- Round points use compact -10, -1, +1, and +10 controls, and history shows every player's result.
-- A zero-value win gives the Yaniv winner -10 points and is unavailable during an Asaf round.
-- Repeating totals are rounded down by place value (`88` to `80`, `111` to `100`).
-- Exact positive multiples of 50 are reduced by 50.
-- With “one score rule per round” enabled, each player can receive only one reduction in a round. Zero-value wins and three-win bonuses therefore prevent a subsequent repeating-number or multiple-of-50 adjustment; otherwise, repeating numbers take priority.
-- Every third consecutive round win gives the winner -10 points and resets their streak.
-- Custom adjustments are added before total-score rules are evaluated.
-- Starting a new game keeps the player names and marks the previous game's last winner as the first player for the next game.
+1. Enter player names and choose the total-score rules.
+2. At the end of each round, enter each player's calculated round score in sequence.
+3. The app adds those values to the previous totals and applies enabled total rules.
+4. The score sheet displays cumulative totals and automatically scrolls to the newest row.
+
+The repeating-number rule rounds a repeated trailing run down: `22 → 20`, `88 → 80`, `111 → 100`, and `122 → 120`.
