@@ -3,93 +3,200 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#eee7d5">
-  <meta name="description" content="מונה יניב בסגנון דף ועט">
-  <title>מונה יניב — דף ניקוד</title>
+  <meta name="theme-color" content="#f4efe3">
+  <meta name="description" content="מונה ניקוד למשחק יניב">
+  <title>יניב — דף ניקוד</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main>
     <section id="setup-view" class="setup-view">
-      <div class="setup-title">
-        <span class="pencil-mark" aria-hidden="true">✎</span>
+      <header class="setup-header">
+        <div class="brand-mark" aria-hidden="true">י</div>
         <div>
-          <p class="kicker" data-i18n="newGame">משחק חדש</p>
-          <h1 data-i18n="whoPlays">מי משחק?</h1>
+          <p>משחק חדש</p>
+          <h1>מי משחק?</h1>
         </div>
-        <button id="language-button" class="paper-button language-button" type="button" aria-label="English">EN</button>
-      </div>
+      </header>
 
-      <form id="setup-form" class="paper-sheet">
+      <form id="setup-form" class="setup-card">
         <div id="player-inputs" class="player-inputs"></div>
-        <button id="add-player-button" class="ink-button" type="button">
-          <span aria-hidden="true">＋</span>
-          <span data-i18n="addPlayer">הוספת שחקן</span>
+        <button id="add-player-button" class="text-button" type="button">
+          <span aria-hidden="true">+</span>
+          הוספת שחקן
         </button>
 
         <fieldset class="rules">
-          <legend data-i18n="paperRules">חוקי הדף</legend>
+          <legend>חוקי הניקוד</legend>
           <label>
             <input id="repeating-rule" type="checkbox" checked>
-            <span data-i18n="repeatingRule">עיגול מספר חוזר מטה (122 ← 120)</span>
+            <span>עיגול מספר חוזר מטה, למשל 122 ל־120</span>
           </label>
           <label>
             <input id="fifty-rule" type="checkbox" checked>
-            <span data-i18n="fiftyRule">הפחתת 50 בכפולות של 50</span>
+            <span>הפחתת 50 בכפולות של 50</span>
           </label>
           <label>
             <input id="one-rule" type="checkbox" checked>
-            <span data-i18n="oneRule">רק חוק אחד לשחקן בכל סיבוב</span>
+            <span>רק חוק אחד לשחקן בכל סיבוב</span>
           </label>
         </fieldset>
 
         <p id="setup-error" class="error" role="alert"></p>
-        <button class="start-button" type="submit" data-i18n="startWriting">מתחילים לכתוב</button>
+        <button class="primary-button" type="submit">מתחילים</button>
       </form>
     </section>
 
     <section id="game-view" class="game-view hidden">
-      <div id="table-scroll" class="table-scroll">
-        <table id="score-table">
-          <thead>
-            <tr id="score-head">
-              <th class="round-column" scope="col" data-i18n="roundShort">סבב</th>
-            </tr>
-          </thead>
-          <tbody id="score-body"></tbody>
-        </table>
-        <div id="empty-note" class="empty-note" data-i18n="emptyNote">הדף עדיין נקי. סיימו סיבוב כדי להתחיל.</div>
+      <nav class="mobile-tabs" aria-label="תצוגת המשחק">
+        <button class="mobile-tab active" data-view="paper" type="button">דף ניקוד</button>
+        <button class="mobile-tab" data-view="dashboard" type="button">נתוני משחק</button>
+      </nav>
+
+      <div id="game-workspace" class="game-workspace" data-mobile-view="paper">
+        <section id="paper-panel" class="paper-panel" aria-labelledby="paper-title">
+          <header class="paper-header">
+            <div>
+              <p>דף המשחק</p>
+              <h2 id="paper-title">יניב</h2>
+            </div>
+            <div class="paper-header-actions">
+              <span id="paper-round-count">0 סיבובים</span>
+              <button id="manage-players-button" class="manage-button" type="button">שחקנים</button>
+            </div>
+          </header>
+
+          <div id="table-scroll" class="table-scroll">
+            <table id="score-table">
+              <thead>
+                <tr id="score-head">
+                  <th class="round-column" scope="col">סבב</th>
+                </tr>
+              </thead>
+              <tbody id="score-body"></tbody>
+            </table>
+            <div id="empty-note" class="paper-empty">
+              <span class="empty-pencil" aria-hidden="true"></span>
+              <p>הדף עדיין נקי</p>
+              <small>סיימו סיבוב כדי להתחיל לכתוב</small>
+            </div>
+          </div>
+        </section>
+
+        <section id="dashboard-panel" class="dashboard-panel" aria-labelledby="dashboard-title">
+          <header class="dashboard-header">
+            <div class="dashboard-brand">
+              <div class="brand-mark small" aria-hidden="true">י</div>
+              <div>
+                <p>לוח המשחק</p>
+                <h2 id="dashboard-title">תמונת מצב</h2>
+              </div>
+            </div>
+            <div id="leader-chip" class="leader-chip hidden"></div>
+          </header>
+
+          <div id="dashboard-empty" class="dashboard-empty">
+            <div class="empty-logo" aria-hidden="true">
+              <span>י</span>
+            </div>
+            <blockquote>״ביניב, כמו בחיים — לפעמים הכי טוב זה להישאר עם כלום.״</blockquote>
+            <p>הנתונים יתחילו לדבר אחרי הסיבוב הראשון.</p>
+            <button id="first-round-button" class="secondary-button" type="button">הוספת סיבוב ראשון</button>
+          </div>
+
+          <div id="dashboard-content" class="dashboard-content hidden">
+            <section id="metric-cards" class="metric-cards" aria-label="נתונים כלליים"></section>
+
+            <section class="chart-card" aria-labelledby="trend-title">
+              <header>
+                <div>
+                  <p>מגמה</p>
+                  <h3 id="trend-title">ניקוד מצטבר</h3>
+                </div>
+              </header>
+              <div id="trend-chart" class="trend-chart"></div>
+              <div id="chart-legend" class="chart-legend"></div>
+            </section>
+
+            <section class="chart-card" aria-labelledby="wins-title">
+              <header>
+                <div>
+                  <p>ניצחונות שסומנו</p>
+                  <h3 id="wins-title">מי לקח הכי הרבה סיבובים?</h3>
+                </div>
+              </header>
+              <div id="wins-chart" class="wins-chart"></div>
+            </section>
+
+            <aside id="game-insight" class="game-insight"></aside>
+          </div>
+        </section>
       </div>
 
-      <div class="game-actions">
-        <button id="new-game-button" class="paper-button action-small" type="button" data-i18n-aria="newGame" aria-label="משחק חדש">↺</button>
-        <button id="round-button" class="round-button" type="button">
-          <span aria-hidden="true">✎</span>
-          <span data-i18n="endRound">סיום סיבוב</span>
+      <footer class="game-actions">
+        <button id="new-game-button" class="icon-button" type="button" aria-label="משחק חדש">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6M5.3 15a7 7 0 1 0 .5-7.5L4 10"/></svg>
         </button>
-        <button id="undo-button" class="paper-button action-small hidden" type="button" data-i18n-aria="undo" aria-label="ביטול">⌫</button>
-        <button id="game-language-button" class="paper-button action-small language-button" type="button" aria-label="English">EN</button>
-      </div>
+        <button id="round-button" class="round-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.2-1 10.7-10.7a2.1 2.1 0 0 0-3-3L5.2 16 4 20Zm10.5-13.3 3 3"/></svg>
+          סיום סיבוב
+        </button>
+        <button id="undo-button" class="icon-button hidden" type="button" aria-label="ביטול הסיבוב האחרון">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7 4 12l5 5M5 12h9a5 5 0 0 1 5 5"/></svg>
+        </button>
+      </footer>
     </section>
   </main>
 
-  <dialog id="score-dialog" aria-labelledby="entry-label entry-player">
+  <dialog id="score-dialog" aria-labelledby="entry-title">
     <form id="score-form">
-      <div class="entry-progress">
-        <span id="entry-round"></span>
-        <span id="entry-progress"></span>
-      </div>
-      <p id="entry-label" class="entry-label" data-i18n="enterScore">כמה נקודות ל־</p>
-      <h2 id="entry-player"></h2>
-      <div class="score-entry">
-        <button id="sign-button" type="button" data-i18n-aria="changeSign" aria-label="שינוי סימן">±</button>
-        <input id="score-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="next" data-i18n-aria="scoreField" aria-label="נקודות">
-      </div>
+      <header class="dialog-header">
+        <div>
+          <p id="entry-round">סיבוב 1</p>
+          <h2 id="entry-title">רושמים נקודות</h2>
+        </div>
+        <span id="entry-progress">1 מתוך 2</span>
+      </header>
+
+      <section class="score-step">
+        <p>כמה נקודות קיבל/ה</p>
+        <h3 id="entry-player"></h3>
+        <div class="score-entry">
+          <button id="sign-button" type="button" aria-label="שינוי סימן" aria-pressed="false">+</button>
+          <input id="score-input" type="text" inputmode="numeric" pattern="[0-9]*"
+            autocomplete="off" enterkeyhint="next" aria-label="נקודות">
+        </div>
+      </section>
+
+      <fieldset class="winner-picker">
+        <legend>מי ניצח/ה בסיבוב? <small>לא חובה</small></legend>
+        <div id="winner-buttons" class="winner-buttons"></div>
+      </fieldset>
+
       <p id="entry-error" class="error" role="alert"></p>
       <div class="dialog-actions">
-        <button id="cancel-entry" class="paper-button" type="button" data-i18n="cancel">ביטול</button>
-        <button id="previous-player" class="paper-button hidden" type="button" data-i18n="back">חזרה</button>
-        <button id="next-player" class="next-button" type="submit" data-i18n="next">הבא</button>
+        <button id="cancel-entry" class="ghost-button" type="button">ביטול</button>
+        <button id="previous-player" class="ghost-button hidden" type="button">הקודם</button>
+        <button id="next-player" class="primary-button" type="submit">הבא</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="players-dialog" aria-labelledby="players-title">
+    <form id="players-form">
+      <header class="dialog-header">
+        <div>
+          <p>ניהול המשחק</p>
+          <h2 id="players-title">שחקנים</h2>
+        </div>
+        <button id="close-players" class="close-dialog" type="button" aria-label="סגירה">×</button>
+      </header>
+      <div id="manage-player-list" class="manage-player-list"></div>
+      <button id="add-player-midgame" class="secondary-button manage-add" type="button">הוספת שחקן</button>
+      <p id="players-error" class="error" role="alert"></p>
+      <div class="dialog-actions manage-actions">
+        <button id="cancel-players" class="ghost-button" type="button">ביטול</button>
+        <button id="save-players" class="primary-button" type="submit">שמירת שינויים</button>
       </div>
     </form>
   </dialog>
