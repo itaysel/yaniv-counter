@@ -62,10 +62,14 @@
             </div>
             <div class="paper-header-actions">
               <span id="paper-round-count">0 סיבובים</span>
-              <button id="manage-players-button" class="manage-button" type="button">שחקנים</button>
+              <div class="roster-controls" aria-label="שחקנים">
+                <button id="add-player-midgame" class="manage-button" type="button" aria-label="הוספת שחקן">+</button>
+                <button id="remove-player-mode" class="manage-button" type="button" aria-label="הסרת שחקן" aria-pressed="false">−</button>
+              </div>
             </div>
           </header>
 
+          <p id="roster-hint" class="roster-hint">הקשה כפולה על שם לעריכה</p>
           <div id="table-scroll" class="table-scroll">
             <table id="score-table">
               <thead>
@@ -128,6 +132,16 @@
               <div id="wins-chart" class="wins-chart"></div>
             </section>
 
+            <section class="chart-card" aria-labelledby="deductions-title">
+              <header><h3 id="deductions-title">הפחתות לפי שחקן</h3></header>
+              <p class="chart-description">נקודות שהופחתו אוטומטית לפי חוקי הניקוד, ללא ניקוד פתיחה.</p>
+              <div id="deductions-chart" class="wins-chart"></div>
+            </section>
+            <section class="chart-card" aria-labelledby="round-map-title">
+              <header><h3 id="round-map-title">מפת ניקוד לפי סיבוב</h3></header>
+              <p class="chart-description">הניקוד שהוזן: כחול לחיובי, ירוק לשלילי. צבע חזק מציין ערך מוחלט גבוה. מקף = לא השתתף.</p>
+              <div id="round-map" class="round-map" tabindex="0" role="region" aria-label="מפת ניקוד נגללת"></div>
+            </section>
             <aside id="game-insight" class="game-insight"></aside>
           </div>
         </section>
@@ -186,13 +200,26 @@
     <form id="players-form">
       <header class="dialog-header">
         <div>
-          <p>ניהול המשחק</p>
-          <h2 id="players-title">שחקנים</h2>
+          <p>שחקנים</p>
+          <h2 id="players-title">הוספת שחקן</h2>
         </div>
         <button id="close-players" class="close-dialog" type="button" aria-label="סגירה">×</button>
       </header>
-      <div id="manage-player-list" class="manage-player-list"></div>
-      <button id="add-player-midgame" class="secondary-button manage-add" type="button">הוספת שחקן</button>
+      <label class="player-field" for="player-name">שם השחקן
+        <input id="player-name" type="text" maxlength="24" autocomplete="off">
+      </label>
+      <div id="initial-score-field">
+        <label class="player-field" for="initial-score">ניקוד התחלתי
+          <input id="initial-score" type="text" inputmode="decimal" dir="ltr" autocomplete="off">
+        </label>
+        <div class="score-picker" aria-label="שינוי ניקוד פתיחה">
+          <button type="button" class="ghost-button" data-initial-step="-10">−10</button>
+          <button type="button" class="ghost-button" data-initial-step="-1">−1</button>
+          <button type="button" class="ghost-button" data-initial-step="1">+1</button>
+          <button type="button" class="ghost-button" data-initial-step="10">+10</button>
+        </div>
+        <p class="chart-description">הניקוד נשמר בדיוק כפי שהוזן. השחקן מצטרף מהסיבוב הבא בלבד.</p>
+      </div>
       <p id="players-error" class="error" role="alert"></p>
       <div class="dialog-actions manage-actions">
         <button id="cancel-players" class="ghost-button" type="button">ביטול</button>

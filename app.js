@@ -16,7 +16,8 @@
   let entryNegative = false;
   let selectedWinnerId = null;
   let toastTimer;
-  let managePlayers = [];
+  let editingPlayerId = null;
+  let removingPlayers = false;
 
   const elements = {
     setupView: document.getElementById("setup-view"),
@@ -60,10 +61,16 @@
     nextPlayer: document.getElementById("next-player"),
     cancelEntry: document.getElementById("cancel-entry"),
     toast: document.getElementById("toast"),
-    managePlayersButton: document.getElementById("manage-players-button"),
+    removePlayerMode: document.getElementById("remove-player-mode"),
+    rosterHint: document.getElementById("roster-hint"),
     playersDialog: document.getElementById("players-dialog"),
     playersForm: document.getElementById("players-form"),
-    managePlayerList: document.getElementById("manage-player-list"),
+    playerName: document.getElementById("player-name"),
+    initialScore: document.getElementById("initial-score"),
+    initialScoreField: document.getElementById("initial-score-field"),
+    playersTitle: document.getElementById("players-title"),
+    deductionsChart: document.getElementById("deductions-chart"),
+    roundMap: document.getElementById("round-map"),
     addPlayerMidgame: document.getElementById("add-player-midgame"),
     closePlayers: document.getElementById("close-players"),
     cancelPlayers: document.getElementById("cancel-players"),
@@ -80,105 +87,69 @@
     };
   }
 
-  function renderManagePlayers() {
-    elements.managePlayerList.replaceChildren();
-    managePlayers.forEach(function (player) {
-      const row = createElement("div", "manage-player-row");
-      const name = createElement("input");
-      name.type = "text";
-      name.value = player.name;
-      name.maxLength = 24;
-      name.setAttribute("aria-label", "שם השחקן");
-      name.addEventListener("input", function () {
-        player.name = name.value;
-      });
-      const initial = createElement("input");
-      initial.type = "number";
-      initial.inputMode = "numeric";
-      initial.value = String(player.initialScore);
-      initial.min = "-1000000";
-      initial.max = "1000000";
-      initial.setAttribute("aria-label", "ניקוד התחלתי");
-      initial.disabled = state.rounds.length > 0 && player.initialScore !== 0;
-      initial.title = initial.disabled ? "הניקוד ההתחלתי כבר נקבע" : "ניקוד התחלתי";
-      initial.addEventListener("input", function () {
-        const value = Number(initial.value);
-        player.initialScore = Number.isSafeInteger(value) ? value : 0;
-      });
-      const remove = createElement("button", "remove-managed-player", "הסרה");
-      remove.type = "button";
-      remove.disabled = managePlayers.length <= 2;
-      remove.addEventListener("click", function () {
-        if (managePlayers.length <= 2) return;
-        managePlayers = managePlayers.filter(function (candidate) {
-          return candidate.id !== player.id;
-        });
-        renderManagePlayers();
-      });
-      row.append(name, initial, remove);
-      elements.managePlayerList.append(row);
-    });
+  function activePlayers() {
+    return state.players.filter(function (player) { return player.leftAfterRound === null; });
   }
 
-  function openPlayersManager() {
-    managePlayers = state.players.map(function (player) {
-      return Object.assign({}, player);
-    });
+  function openPlayerEditor(player) {
+    if (elements.playersDialog.open) return;
+    editingPlayerId = player ? player.id : null;
+    elements.playersTitle.textContent = player ? "עריכת שם" : "הוספת שחקן";
+    elements.playerName.value = player ? player.name : "";
+    elements.initialScore.value = "0";
+    elements.initialScoreField.classList.toggle("hidden", Boolean(player));
+    elements.savePlayers.textContent = player ? "שמירת שם" : "הוספה למשחק";
     elements.playersError.textContent = "";
-    renderManagePlayers();
     openDialog(elements.playersDialog);
+    elements.playerName.focus();
+    elements.playerName.select();
   }
 
-  function validateManagedPlayers() {
-    const names = managePlayers.map(function (player) {
-      return player.name.trim();
-    });
-    const normalized = names.map(function (name) {
-      return name.toLocaleLowerCase("he");
-    });
-    if (names.some(function (name) { return !name; })) {
-      return "לכל שחקן צריך להיות שם.";
+  function readInitialScore() {
+    const raw = elements.initialScore.value.trim();
+    if (!/^[+-]?\d+$/.test(raw) || !Number.isSafeInteger(Number(raw))) {
+      elements.playersError.textContent = "יש להזין ניקוד התחלתי כמספר שלם תקין.";
+      elements.initialScore.focus();
+      return null;
     }
-    if (new Set(normalized).size !== names.length) {
-      return "השמות חייבים להיות שונים.";
-    }
-    if (managePlayers.some(function (player) {
-      return !Number.isSafeInteger(player.initialScore);
+    return Number(raw);
+  }
+
+  function savePlayer() {
+    const name = elements.playerName.value.trim();
+    if (!name || state.players.some(function (player) {
+      return player.id !== editingPlayerId && player.name.toLocaleLowerCase("he") === name.toLocaleLowerCase("he");
     })) {
-      return "הניקוד ההתחלתי חייב להיות מספר שלם.";
-    }
-    return "";
-  }
-
-  function saveManagedPlayers() {
-    const error = validateManagedPlayers();
-    if (error) {
-      elements.playersError.textContent = error;
+      elements.playersError.textContent = "יש להזין שם שאינו ריק ושונה משאר השמות.";
+      elements.playerName.focus();
       return;
     }
-    const previousIds = new Set(state.players.map(function (player) { return player.id; }));
-    const added = managePlayers.filter(function (player) { return !previousIds.has(player.id); });
-    added.forEach(function (player) {
-      state.rounds.forEach(function (round) {
-        round.scores[player.id] = 0;
+    if (editingPlayerId) {
+      state.players.find(function (player) { return player.id === editingPlayerId; }).name = name;
+    } else {
+      const initialScore = readInitialScore();
+      if (initialScore === null) return;
+      state.players.push({
+        id: createId(), name: name, initialScore: initialScore,
+        joinedAfterRound: state.rounds.length, leftAfterRound: null
       });
-    });
-    state.players = managePlayers.map(function (player) {
-      return {
-        id: player.id,
-        name: player.name.trim(),
-        initialScore: player.initialScore
-      };
-    });
-    state.rounds.forEach(function (round) {
-      if (round.winnerId && !state.players.some(function (player) { return player.id === round.winnerId; })) {
-        round.winnerId = null;
-      }
-    });
+    }
+    removingPlayers = false;
     saveState();
     closeDialog(elements.playersDialog);
     renderGame(false);
-    showToast("רשימת השחקנים עודכנה");
+  }
+
+  function removePlayer(player) {
+    if (activePlayers().length <= 2) {
+      showToast("יש להשאיר לפחות שני שחקנים במשחק.");
+      return;
+    }
+    if (!window.confirm("להסיר את " + player.name + " מהסיבובים הבאים? הניקוד והניצחונות הקודמים יישמרו.")) return;
+    player.leftAfterRound = state.rounds.length;
+    removingPlayers = false;
+    saveState();
+    renderGame(false);
   }
 
   function loadState() {
@@ -196,7 +167,9 @@
         return {
           id: player.id,
           name: player.name,
-          initialScore: Number.isSafeInteger(player.initialScore) ? player.initialScore : 0
+          initialScore: Number.isSafeInteger(player.initialScore) ? player.initialScore : 0,
+          joinedAfterRound: Number.isSafeInteger(player.joinedAfterRound) ? Math.max(0, Math.min(saved.rounds.length, player.joinedAfterRound)) : 0,
+          leftAfterRound: Number.isSafeInteger(player.leftAfterRound) ? Math.max(0, Math.min(saved.rounds.length, player.leftAfterRound)) : null
         };
       });
       const playerIds = new Set(players.map(function (player) {
@@ -302,9 +275,13 @@
 
     let totalDeductions = 0;
     let highestRoundScore = null;
-    const rows = state.rounds.map(function (round) {
+    const rows = state.rounds.map(function (round, index) {
       const cells = {};
       state.players.forEach(function (player) {
+        if (index < player.joinedAfterRound || (player.leftAfterRound !== null && index >= player.leftAfterRound)) {
+          cells[player.id] = null;
+          return;
+        }
         const before = totals[player.id];
         const entered = integerOrZero(round.scores[player.id]);
         const raw = before + entered;
@@ -401,6 +378,11 @@
       ? "סיבוב אחד"
       : state.rounds.length + " סיבובים";
     elements.undoButton.classList.toggle("hidden", state.rounds.length === 0);
+    elements.removePlayerMode.disabled = activePlayers().length <= 2;
+    elements.removePlayerMode.setAttribute("aria-pressed", String(removingPlayers));
+    elements.rosterHint.textContent = removingPlayers
+      ? "בחרו שחקן להסרה. ההיסטוריה שלו תישמר."
+      : "הקשה כפולה על שם לעריכה";
 
     if (scrollToBottom) {
       requestAnimationFrame(function () {
@@ -415,8 +397,45 @@
     });
 
     state.players.forEach(function (player) {
-      const header = createElement("th", "", player.name);
+      const header = createElement("th");
       header.scope = "col";
+      const button = createElement("button", "header-player", player.name);
+      button.type = "button";
+      button.dataset.playerId = player.id;
+      button.setAttribute("aria-label", "עריכת שם: " + player.name + ". הקשה כפולה או Enter.");
+      button.title = "הקשה כפולה לעריכת שם";
+      button.addEventListener("dblclick", function () { openPlayerEditor(player); });
+      button.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openPlayerEditor(player);
+        }
+      });
+      let lastTouch = null;
+      button.addEventListener("pointerup", function (event) {
+        if (event.pointerType !== "touch") return;
+        const now = performance.now();
+        if (lastTouch !== null && now - lastTouch < 350) {
+          event.preventDefault();
+          lastTouch = null;
+          openPlayerEditor(player);
+        } else {
+          lastTouch = now;
+        }
+      });
+      header.append(button);
+      if (player.initialScore !== 0 || player.joinedAfterRound > 0) {
+        header.append(createElement("small", "player-start", "פתיחה: " + player.initialScore + " · אחרי " + player.joinedAfterRound));
+      }
+      if (player.leftAfterRound !== null) {
+        header.append(createElement("small", "player-start", "פרש/ה"));
+      } else if (removingPlayers) {
+        const remove = createElement("button", "remove-managed-player", "− הסרה");
+        remove.type = "button";
+        remove.dataset.playerId = player.id;
+        remove.addEventListener("click", function () { removePlayer(player); });
+        header.append(remove);
+      }
       elements.scoreHead.append(header);
     });
 
@@ -430,6 +449,12 @@
       state.players.forEach(function (player) {
         const data = row.cells[player.id];
         const cell = createElement("td");
+        if (!data) {
+          cell.textContent = "—";
+          cell.title = "לא השתתף בסיבוב";
+          tableRow.append(cell);
+          return;
+        }
         cell.append(createElement("span", "", String(data.total)));
 
         const entered = createElement(
@@ -468,7 +493,7 @@
     elements.leaderChip.classList.toggle("hidden", !hasRounds);
     if (!hasRounds) return;
 
-    const ranked = state.players.slice().sort(function (first, second) {
+    const ranked = activePlayers().sort(function (first, second) {
       return game.totals[first.id] - game.totals[second.id];
     });
     const leader = ranked[0];
@@ -510,6 +535,7 @@
 
     renderTrendChart(game);
     renderWinsChart(markedWins);
+    renderAdditionalCharts(game);
 
     if (game.totalDeductions > 0) {
       elements.gameInsight.textContent =
@@ -529,9 +555,10 @@
     const allValues = [0];
     game.rows.forEach(function (row) {
       state.players.forEach(function (player) {
-        allValues.push(row.cells[player.id].total);
+        if (row.cells[player.id]) allValues.push(row.cells[player.id].total);
       });
     });
+    state.players.forEach(function (player) { allValues.push(player.initialScore); });
     const minValue = Math.min.apply(null, allValues);
     const maxValue = Math.max.apply(null, allValues);
     const range = Math.max(1, maxValue - minValue);
@@ -562,20 +589,21 @@
 
     state.players.forEach(function (player, playerIndex) {
       const color = CHART_COLORS[playerIndex % CHART_COLORS.length];
-      const values = [0].concat(game.rows.map(function (row) {
-        return row.cells[player.id].total;
-      }));
-      const points = values.map(function (value, index) {
-        return xFor(index) + "," + yFor(value);
+      const values = [{ round: player.joinedAfterRound, value: player.initialScore }];
+      game.rows.forEach(function (row, index) {
+        if (row.cells[player.id]) values.push({ round: index + 1, value: row.cells[player.id].total });
+      });
+      const points = values.map(function (point) {
+        return xFor(point.round) + "," + yFor(point.value);
       }).join(" ");
       svgParts.push('<polyline class="chart-player-line" stroke="', color, '" points="', points, '"/>');
-      values.forEach(function (value, index) {
-        svgParts.push('<circle class="chart-point" fill="', color, '" cx="', xFor(index),
-          '" cy="', yFor(value), '" r="3.5"/>');
+      values.forEach(function (point) {
+        svgParts.push('<circle class="chart-point" fill="', color, '" cx="', xFor(point.round),
+          '" cy="', yFor(point.value), '" r="3.5"/>');
       });
       const finalValue = values[values.length - 1];
       svgParts.push('<text class="chart-line-label" fill="', color, '" x="',
-        xFor(values.length - 1) + 7, '" y="', yFor(finalValue) + 4,
+        xFor(finalValue.round) + 7, '" y="', yFor(finalValue.value) + 4,
         '">', escapeSvgText(player.name), '</text>');
     });
     svgParts.push("</svg>");
@@ -601,22 +629,76 @@
   }
 
   function renderWinsChart(markedWins) {
-    const maxWins = Math.max.apply(null, [1].concat(Object.keys(markedWins).map(function (playerId) {
-      return markedWins[playerId];
+    renderBars(elements.winsChart, markedWins);
+  }
+
+  function renderBars(container, values) {
+    const maximum = Math.max.apply(null, [1].concat(Object.keys(values).map(function (playerId) {
+      return values[playerId];
     })));
-    elements.winsChart.replaceChildren();
+    container.replaceChildren();
 
     state.players.forEach(function (player) {
-      const wins = markedWins[player.id];
+      const value = values[player.id];
       const row = createElement("div", "win-row");
-      const name = createElement("span", "win-name", player.name);
+      const name = createElement("span", "win-name", player.name + (player.leftAfterRound !== null ? " (פרש/ה)" : ""));
+      name.title = name.textContent;
       const track = createElement("div", "win-track");
       const fill = createElement("div", "win-fill");
-      fill.style.width = (wins / maxWins) * 100 + "%";
+      fill.style.width = (value / maximum) * 100 + "%";
       track.append(fill);
-      row.append(name, track, createElement("span", "win-value", String(wins)));
-      elements.winsChart.append(row);
+      row.append(name, track, createElement("span", "win-value", String(value)));
+      container.append(row);
     });
+  }
+
+  function renderAdditionalCharts(game) {
+    const deductions = {};
+    let maxScore = 1;
+    state.players.forEach(function (player) {
+      deductions[player.id] = 0;
+      game.rows.forEach(function (row) {
+        const cell = row.cells[player.id];
+        if (cell) {
+          deductions[player.id] += cell.deduction;
+          maxScore = Math.max(maxScore, Math.abs(cell.entered));
+        }
+      });
+    });
+    renderBars(elements.deductionsChart, deductions);
+    const table = createElement("table", "heatmap");
+    const caption = createElement("caption", "visually-hidden", "הניקוד שהוזן בכל סיבוב, לפני הפחתות");
+    const head = createElement("thead");
+    const headings = createElement("tr");
+    const corner = createElement("th", "", "סבב");
+    corner.scope = "col";
+    headings.append(corner);
+    state.players.forEach(function (player) {
+      const heading = createElement("th", "", player.name);
+      heading.scope = "col";
+      headings.append(heading);
+    });
+    head.append(headings);
+    const body = createElement("tbody");
+    game.rows.forEach(function (round, index) {
+      const row = createElement("tr");
+      const heading = createElement("th", "", String(index + 1));
+      heading.scope = "row";
+      row.append(heading);
+      state.players.forEach(function (player) {
+        const data = round.cells[player.id];
+        const cell = createElement("td", "", data ? String(data.entered) : "—");
+        if (data && data.entered !== 0) {
+          const alpha = .08 + .32 * Math.abs(data.entered) / maxScore;
+          cell.style.backgroundColor = "rgba(" + (data.entered < 0 ? "22,160,133," : "49,94,251,") + alpha + ")";
+        }
+        cell.title = player.name + " · סיבוב " + (index + 1) + ": " + (data ? data.entered : "לא השתתף");
+        row.append(cell);
+      });
+      body.append(row);
+    });
+    table.append(caption, head, body);
+    elements.roundMap.replaceChildren(table);
   }
 
   function openRoundEntry() {
@@ -632,7 +714,7 @@
 
   function renderWinnerButtons() {
     elements.winnerButtons.replaceChildren();
-    state.players.forEach(function (player) {
+    activePlayers().forEach(function (player) {
       const button = createElement("button", "winner-button");
       button.type = "button";
       button.dataset.playerId = player.id;
@@ -657,18 +739,19 @@
   }
 
   function renderEntryPlayer() {
-    const player = state.players[entryIndex];
+    const players = activePlayers();
+    const player = players[entryIndex];
     const hasValue = Object.prototype.hasOwnProperty.call(entryValues, player.id);
     const value = hasValue ? entryValues[player.id] : 0;
     elements.entryRound.textContent = "סיבוב " + (state.rounds.length + 1);
-    elements.entryProgress.textContent = (entryIndex + 1) + " מתוך " + state.players.length;
+    elements.entryProgress.textContent = (entryIndex + 1) + " מתוך " + players.length;
     elements.entryPlayer.textContent = player.name;
     elements.scoreInput.value = hasValue ? String(Math.abs(value)) : "";
-    elements.scoreInput.enterKeyHint = entryIndex === state.players.length - 1 ? "done" : "next";
+    elements.scoreInput.enterKeyHint = entryIndex === players.length - 1 ? "done" : "next";
     entryNegative = value < 0;
     renderSign();
     elements.previousPlayer.classList.toggle("hidden", entryIndex === 0);
-    elements.nextPlayer.textContent = entryIndex === state.players.length - 1 ? "שמירת הסיבוב" : "הבא";
+    elements.nextPlayer.textContent = entryIndex === players.length - 1 ? "שמירת הסיבוב" : "הבא";
     requestAnimationFrame(function () {
       elements.scoreInput.focus();
     });
@@ -696,10 +779,11 @@
       return;
     }
 
-    entryValues[state.players[entryIndex].id] = entryNegative ? -number : number;
+    const players = activePlayers();
+    entryValues[players[entryIndex].id] = entryNegative ? -number : number;
     elements.entryError.textContent = "";
 
-    if (entryIndex < state.players.length - 1) {
+    if (entryIndex < players.length - 1) {
       entryIndex += 1;
       renderEntryPlayer();
       return;
@@ -757,7 +841,7 @@
     }
 
     state.players = names.map(function (name) {
-      return { id: createId(), name: name, initialScore: 0 };
+      return { id: createId(), name: name, initialScore: 0, joinedAfterRound: 0, leftAfterRound: null };
     });
     state.rounds = [];
     state.rules = {
@@ -798,10 +882,13 @@
   elements.cancelEntry.addEventListener("click", function () {
     closeDialog(elements.scoreDialog);
   });
-  elements.managePlayersButton.addEventListener("click", openPlayersManager);
+  elements.removePlayerMode.addEventListener("click", function () {
+    removingPlayers = !removingPlayers;
+    renderGame(false);
+  });
   elements.playersForm.addEventListener("submit", function (event) {
     event.preventDefault();
-    saveManagedPlayers();
+    savePlayer();
   });
   elements.closePlayers.addEventListener("click", function () {
     closeDialog(elements.playersDialog);
@@ -810,14 +897,20 @@
     closeDialog(elements.playersDialog);
   });
   elements.addPlayerMidgame.addEventListener("click", function () {
-    managePlayers.push({
-      id: createId(),
-      name: "",
-      initialScore: 0
+    openPlayerEditor(null);
+  });
+  document.querySelectorAll("[data-initial-step]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      const value = readInitialScore();
+      if (value === null) return;
+      const next = value + Number(button.dataset.initialStep);
+      if (!Number.isSafeInteger(next)) {
+        elements.playersError.textContent = "המספר גדול מדי.";
+        return;
+      }
+      elements.initialScore.value = String(next);
+      elements.playersError.textContent = "";
     });
-    renderManagePlayers();
-    const inputs = elements.managePlayerList.querySelectorAll("input[type='text']");
-    inputs[inputs.length - 1].focus();
   });
   elements.previousPlayer.addEventListener("click", function () {
     if (entryIndex === 0) return;
@@ -829,6 +922,10 @@
   elements.undoButton.addEventListener("click", function () {
     if (state.rounds.length === 0) return;
     state.rounds.pop();
+    state.players.forEach(function (player) {
+      player.joinedAfterRound = Math.min(player.joinedAfterRound, state.rounds.length);
+      if (player.leftAfterRound !== null) player.leftAfterRound = Math.min(player.leftAfterRound, state.rounds.length);
+    });
     saveState();
     renderGame(true);
     showToast("הסיבוב האחרון בוטל");
@@ -836,7 +933,7 @@
 
   elements.newGameButton.addEventListener("click", function () {
     if (!window.confirm("למחוק את דף הניקוד ולהתחיל משחק חדש?")) return;
-    setupNames = state.players.map(function (player) {
+    setupNames = activePlayers().map(function (player) {
       return player.name;
     });
     const rules = Object.assign({}, state.rules);
