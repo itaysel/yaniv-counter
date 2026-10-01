@@ -110,19 +110,40 @@
 
           <div id="dashboard-content" class="dashboard-content hidden">
             <section id="metric-cards" class="metric-cards" aria-label="נתונים כלליים"></section>
-
-            <section class="chart-card" aria-labelledby="trend-title">
+            <div class="chart-toolbar">
+              <div id="chart-navigation" class="chart-navigation" aria-label="בחירת גרף">
+                <button id="previous-chart" type="button" aria-label="הגרף הקודם">‹</button>
+                <span id="chart-position"></span>
+                <button id="next-chart" type="button" aria-label="הגרף הבא">›</button>
+                <button id="rotate-charts" type="button" aria-pressed="true">השהיית החלפה</button>
+              </div>
+              <div id="chart-player-pages" class="chart-navigation" aria-label="קבוצת שחקנים">
+                <button id="previous-chart-players" type="button" aria-label="שחקנים קודמים">‹</button>
+                <span id="chart-player-position"></span>
+                <button id="next-chart-players" type="button" aria-label="שחקנים הבאים">›</button>
+              </div>
+            </div>
+            <div id="chart-stage" class="chart-stage">
+            <section class="chart-card" aria-labelledby="trend-title" data-chart-name="ניקוד מצטבר">
               <header>
                 <div>
                   <p>מגמה</p>
                   <h3 id="trend-title">ניקוד מצטבר</h3>
                 </div>
               </header>
+              <div class="replay-controls" aria-label="ניגון התקדמות הניקוד">
+                <button id="replay-toggle" type="button" aria-pressed="false">ניגון</button>
+                <button id="replay-reset" type="button">מצב נוכחי</button>
+                <label for="replay-speed" class="visually-hidden">מהירות ניגון</label>
+                <select id="replay-speed"><option value="1500">רגיל</option><option value="500">מהיר</option><option value="3000">איטי</option></select>
+                <output id="replay-position" for="replay-round"></output>
+                <input id="replay-round" type="range" min="0" value="0" step="1" aria-label="סיבוב לצפייה">
+              </div>
               <div id="trend-chart" class="trend-chart"></div>
               <div id="chart-legend" class="chart-legend"></div>
             </section>
 
-            <section class="chart-card" aria-labelledby="wins-title">
+            <section class="chart-card" aria-labelledby="wins-title" data-chart-name="ניצחונות">
               <header>
                 <div>
                   <p>ניצחונות שסומנו</p>
@@ -132,16 +153,22 @@
               <div id="wins-chart" class="wins-chart"></div>
             </section>
 
-            <section class="chart-card" aria-labelledby="deductions-title">
+            <section class="chart-card" aria-labelledby="deductions-title" data-chart-name="הפחתות">
               <header><h3 id="deductions-title">הפחתות לפי שחקן</h3></header>
               <p class="chart-description">נקודות שהופחתו אוטומטית לפי חוקי הניקוד, ללא ניקוד פתיחה.</p>
               <div id="deductions-chart" class="wins-chart"></div>
             </section>
-            <section class="chart-card" aria-labelledby="round-map-title">
+            <section class="chart-card" aria-labelledby="round-map-title" data-chart-name="מפת סיבובים">
               <header><h3 id="round-map-title">מפת ניקוד לפי סיבוב</h3></header>
               <p class="chart-description">הניקוד שהוזן: כחול לחיובי, ירוק לשלילי. צבע חזק מציין ערך מוחלט גבוה. מקף = לא השתתף.</p>
-              <div id="round-map" class="round-map" tabindex="0" role="region" aria-label="מפת ניקוד נגללת"></div>
+              <div class="chart-navigation">
+                <button id="previous-map" type="button" aria-label="סיבובים קודמים">‹</button>
+                <span id="map-position"></span>
+                <button id="next-map" type="button" aria-label="סיבובים הבאים">›</button>
+              </div>
+              <div id="round-map" class="round-map" role="region" aria-label="מפת ניקוד"></div>
             </section>
+            </div>
             <aside id="game-insight" class="game-insight"></aside>
           </div>
         </section>

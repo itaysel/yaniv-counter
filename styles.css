@@ -1249,3 +1249,250 @@ dialog::backdrop {
     transition-duration: .01ms !important;
   }
 }
+
+  /* Chart cards use the remaining panel space; larger datasets are paged, not scrolled. */
+  .dashboard-content {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+    padding: 12px;
+  }
+
+  .dashboard-content .metric-cards {
+    flex: none;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    margin: 0;
+  }
+
+  .dashboard-content .metric-card {
+    padding: 8px;
+  }
+
+  .dashboard-content .metric-card strong {
+    font-size: 1.15rem;
+  }
+
+  .dashboard-content .metric-card span {
+    font-size: .65rem;
+    white-space: normal;
+  }
+
+  .chart-toolbar {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: space-between;
+  }
+
+  .chart-navigation,
+  .replay-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    font-size: .72rem;
+  }
+
+  .chart-navigation button,
+  .replay-controls button,
+  .replay-controls select {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 4px 7px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #f5f7ff;
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .chart-navigation button:disabled {
+    opacity: .35;
+    cursor: default;
+  }
+
+  .chart-stage {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    display: grid;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .chart-stage.chart-grid {
+    grid-template: repeat(2, minmax(0, 1fr)) / repeat(2, minmax(0, 1fr));
+  }
+
+  .chart-stage .chart-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+    min-width: 0;
+    margin: 0;
+    padding: 10px;
+  }
+
+  .chart-stage .chart-card header {
+    flex: none;
+  }
+
+  .chart-stage .chart-card header p {
+    display: none;
+  }
+
+  .chart-stage .chart-card h3 {
+    font-size: .9rem;
+  }
+
+  .replay-controls {
+    flex: none;
+  }
+
+  #replay-round {
+    width: 100%;
+    margin: 0;
+    min-width: 0;
+    height: 26px;
+    direction: ltr;
+    accent-color: var(--blue);
+  }
+
+  .chart-stage .trend-chart {
+    flex: 1;
+    min-height: 60px;
+    height: auto;
+    margin: 0;
+    direction: ltr;
+  }
+
+  .chart-stage .trend-chart svg {
+    display: block;
+    overflow: hidden;
+  }
+
+  .chart-stage .chart-legend {
+    flex: none;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    margin: 0;
+  }
+
+  .chart-stage .legend-item {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: .7rem;
+  }
+
+  .legend-dot {
+    flex-shrink: 0;
+  }
+
+  .legend-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .legend-score {
+    flex-shrink: 0;
+    font-size: .65rem;
+  }
+
+  .chart-stage .wins-chart {
+    flex: 1;
+    min-height: 0;
+    align-content: center;
+    margin: 0;
+    gap: 12px;
+  }
+
+  .chart-stage .win-row {
+    grid-template-columns: minmax(60px, 1fr) minmax(30px, 2fr) minmax(30px, auto);
+  }
+
+  .chart-stage .chart-description {
+    font-size: .7rem;
+    line-height: 1.3;
+    margin: 0;
+  }
+
+  .chart-stage .round-map {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+  }
+
+  .chart-stage .heatmap {
+    table-layout: fixed;
+    height: 100%;
+  }
+
+  .chart-stage .heatmap th,
+  .chart-stage .heatmap td {
+    min-width: 0;
+    padding: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .72rem;
+  }
+
+  .dashboard-content .game-insight {
+    flex: none;
+    padding: 6px 10px;
+    font-size: .72rem;
+  }
+
+  @media (max-height: 720px) {
+    .dashboard-content .game-insight {
+      display: none;
+    }
+    .dashboard-content {
+      gap: 4px;
+      padding: 6px;
+    }
+    .dashboard-content .metric-card {
+      padding: 4px;
+    }
+    .dashboard-header {
+      min-height: 48px;
+      padding: 5px 10px;
+    }
+    .dashboard-header .brand-mark,
+    .dashboard-brand p {
+      display: none;
+    }
+  }
+
+  @media (max-height: 560px) {
+    .dashboard-content .metric-cards,
+    .dashboard-header,
+    .chart-stage .chart-description {
+      display: none;
+    }
+
+    .chart-stage .chart-card {
+      gap: 3px;
+      padding: 5px;
+    }
+    .chart-stage .chart-legend {
+      display: none;
+    }
+  }
+
+@media (max-height: 620px) {
+  .dashboard-content .metric-cards {
+    display: none;
+  }
+}

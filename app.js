@@ -18,6 +18,15 @@
   let toastTimer;
   let editingPlayerId = null;
   let removingPlayers = false;
+  let dashboardGame = null;
+  let selectedChart = 0;
+  let chartPlayerPage = 0;
+  let mapPage = 0;
+  let replayRound = null;
+  let replayTimer = null;
+  let rotationTimer = null;
+  let autoRotate = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let allChartsFit = false;
 
   const elements = {
     setupView: document.getElementById("setup-view"),
@@ -332,6 +341,9 @@
     if (active) {
       renderGame(true);
     } else {
+      stopReplay();
+      clearInterval(rotationTimer);
+      dashboardGame = null;
       renderSetup();
     }
   }
@@ -487,11 +499,18 @@
   }
 
   function renderDashboard(game) {
+    stopReplay();
+    replayRound = null;
+    dashboardGame = game;
+    mapPage = Math.max(0, Math.ceil(game.rows.length / 3) - 1);
     const hasRounds = state.rounds.length > 0;
     elements.dashboardEmpty.classList.toggle("hidden", hasRounds);
     elements.dashboardContent.classList.toggle("hidden", !hasRounds);
     elements.leaderChip.classList.toggle("hidden", !hasRounds);
-    if (!hasRounds) return;
+    if (!hasRounds) {
+      clearInterval(rotationTimer);
+      return;
+    }
 
     const ranked = activePlayers().sort(function (first, second) {
       return game.totals[first.id] - game.totals[second.id];
@@ -536,6 +555,7 @@
     renderTrendChart(game);
     renderWinsChart(markedWins);
     renderAdditionalCharts(game);
+    updateChartLayout();
 
     if (game.totalDeductions > 0) {
       elements.gameInsight.textContent =
@@ -548,9 +568,97 @@
     }
   }
 
+  function chartPlayers() {
+    const pageCount = Math.ceil(state.players.length / 3);
+    chartPlayerPage = Math.min(chartPlayerPage, Math.max(0, pageCount - 1));
+    return state.players.slice(chartPlayerPage * 3, chartPlayerPage * 3 + 3);
+  }
+
+  function dashboardVisible() {
+    return !document.hidden && !elements.gameView.classList.contains("hidden") &&
+      document.getElementById("dashboard-panel").getBoundingClientRect().width > 0 &&
+      !document.querySelector("dialog[open]");
+  }
+
+  function stopReplay() {
+    clearInterval(replayTimer);
+    replayTimer = null;
+    const button = document.getElementById("replay-toggle");
+    button.textContent = "ניגון";
+    button.setAttribute("aria-pressed", "false");
+  }
+
+  function refreshCharts() {
+    if (!dashboardGame) return;
+    renderTrendChart(dashboardGame);
+    const wins = {};
+    state.players.forEach(function (player) { wins[player.id] = 0; });
+    state.rounds.forEach(function (round) {
+      if (Object.prototype.hasOwnProperty.call(wins, round.winnerId)) wins[round.winnerId] += 1;
+    });
+    renderWinsChart(wins);
+    renderAdditionalCharts(dashboardGame);
+  }
+
+  function updateChartLayout() {
+    const stage = document.getElementById("chart-stage");
+    if (!stage.clientWidth || !stage.clientHeight) return;
+    allChartsFit = stage.clientWidth >= 660 && stage.clientHeight >= 680;
+    stage.classList.toggle("chart-grid", allChartsFit);
+    document.querySelectorAll("#chart-stage > .chart-card").forEach(function (card, index) {
+      card.classList.toggle("hidden", !allChartsFit && index !== selectedChart);
+    });
+    document.getElementById("chart-navigation").classList.toggle("hidden", allChartsFit);
+    const cards = document.querySelectorAll("#chart-stage > .chart-card");
+    document.getElementById("chart-position").textContent = (selectedChart + 1) + "/4 · " + cards[selectedChart].dataset.chartName;
+    const pages = Math.ceil(state.players.length / 3);
+    chartPlayers();
+    document.getElementById("chart-player-pages").classList.toggle("hidden", pages <= 1);
+    document.getElementById("chart-player-position").textContent = "שחקנים " + (chartPlayerPage * 3 + 1) + "–" + Math.min(state.players.length, chartPlayerPage * 3 + 3);
+    document.getElementById("previous-chart-players").disabled = chartPlayerPage === 0;
+    document.getElementById("next-chart-players").disabled = chartPlayerPage >= pages - 1;
+    const rotate = document.getElementById("rotate-charts");
+    rotate.textContent = autoRotate ? "השהיית החלפה" : "החלפה אוטומטית";
+    rotate.setAttribute("aria-pressed", String(autoRotate));
+    clearInterval(rotationTimer);
+    if (autoRotate && !allChartsFit && state.rounds.length) {
+      rotationTimer = setInterval(function () {
+        if (!dashboardVisible() || replayTimer || replayRound !== null ||
+            stage.matches(":hover") || elements.dashboardContent.contains(document.activeElement)) return;
+        selectedChart = (selectedChart + 1) % 4;
+        updateChartLayout();
+      }, 8000);
+    }
+    requestAnimationFrame(function () {
+      if (dashboardGame && elements.trendChart.getBoundingClientRect().width > 0) renderTrendChart(dashboardGame);
+    });
+  }
+
+  function startReplay() {
+    stopReplay();
+    if (!dashboardGame || !state.rounds.length) return;
+    if (replayRound === null || replayRound >= state.rounds.length) replayRound = 0;
+    selectedChart = 0;
+    updateChartLayout();
+    renderTrendChart(dashboardGame);
+    document.getElementById("replay-toggle").textContent = "השהיה";
+    document.getElementById("replay-toggle").setAttribute("aria-pressed", "true");
+    replayTimer = setInterval(function () {
+      if (!dashboardVisible()) { stopReplay(); return; }
+      replayRound = Math.min(state.rounds.length, replayRound + 1);
+      renderTrendChart(dashboardGame);
+      if (replayRound === state.rounds.length) stopReplay();
+    }, Number(document.getElementById("replay-speed").value));
+  }
+
   function renderTrendChart(game) {
-    const width = 520;
-    const height = 180;
+    const shownRound = replayRound === null ? state.rounds.length : replayRound;
+    const slider = document.getElementById("replay-round");
+    slider.max = String(state.rounds.length);
+    slider.value = String(shownRound);
+    document.getElementById("replay-position").textContent = "סיבוב " + shownRound + " / " + state.rounds.length;
+    const width = Math.max(240, elements.trendChart.clientWidth || 520);
+    const height = Math.max(60, Math.min(240, elements.trendChart.clientHeight || 180));
     const padding = { top: 18, right: 86, bottom: 24, left: 42 };
     const allValues = [0];
     game.rows.forEach(function (row) {
@@ -561,10 +669,11 @@
     state.players.forEach(function (player) { allValues.push(player.initialScore); });
     const minValue = Math.min.apply(null, allValues);
     const maxValue = Math.max.apply(null, allValues);
-    const range = Math.max(1, maxValue - minValue);
+    const scaleMax = maxValue === minValue ? maxValue + 3 : maxValue;
+    const range = scaleMax - minValue;
     const pointCount = state.rounds.length + 1;
     const yFor = function (value) {
-      return padding.top + ((maxValue - value) / range) * (height - padding.top - padding.bottom);
+      return padding.top + ((scaleMax - value) / range) * (height - padding.top - padding.bottom);
     };
     const xFor = function (index) {
       return padding.left + (index / Math.max(1, pointCount - 1)) *
@@ -576,7 +685,7 @@
     ];
     for (let line = 0; line < 4; line += 1) {
       const y = padding.top + (line / 3) * (height - padding.top - padding.bottom);
-      const value = Math.round(maxValue - (line / 3) * range);
+      const value = Math.round(scaleMax - (line / 3) * range);
       svgParts.push('<line class="chart-grid-line" x1="', padding.left, '" y1="', y,
         '" x2="', width - padding.right, '" y2="', y, '"/>');
       svgParts.push('<text class="chart-axis-label" x="', padding.left - 8,
@@ -587,11 +696,14 @@
     svgParts.push('<line class="chart-axis" x1="', padding.left, '" y1="', height - padding.bottom,
       '" x2="', width - padding.right, '" y2="', height - padding.bottom, '"/>');
 
-    state.players.forEach(function (player, playerIndex) {
+    const lineLabels = [];
+    chartPlayers().forEach(function (player) {
+      const playerIndex = state.players.indexOf(player);
       const color = CHART_COLORS[playerIndex % CHART_COLORS.length];
+      if (player.joinedAfterRound > shownRound) return;
       const values = [{ round: player.joinedAfterRound, value: player.initialScore }];
       game.rows.forEach(function (row, index) {
-        if (row.cells[player.id]) values.push({ round: index + 1, value: row.cells[player.id].total });
+        if (index < shownRound && row.cells[player.id]) values.push({ round: index + 1, value: row.cells[player.id].total });
       });
       const points = values.map(function (point) {
         return xFor(point.round) + "," + yFor(point.value);
@@ -602,19 +714,38 @@
           '" cy="', yFor(point.value), '" r="3.5"/>');
       });
       const finalValue = values[values.length - 1];
-      svgParts.push('<text class="chart-line-label" fill="', color, '" x="',
-        xFor(finalValue.round) + 7, '" y="', yFor(finalValue.value) + 4,
-        '">', escapeSvgText(player.name), '</text>');
+      lineLabels.push({ player: player, color: color, x: xFor(finalValue.round), y: yFor(finalValue.value) });
     });
+    lineLabels.sort(function (a, b) { return a.y - b.y; });
+    const labelGap = Math.min(18, (height - padding.top - padding.bottom) / Math.max(1, lineLabels.length - 1));
+    lineLabels.forEach(function (label, index) {
+      label.labelY = Math.max(label.y, index ? lineLabels[index - 1].labelY + labelGap : padding.top);
+    });
+    for (let index = lineLabels.length - 1; index >= 0; index -= 1) {
+      const label = lineLabels[index];
+      label.labelY = Math.min(label.labelY, index < lineLabels.length - 1 ? lineLabels[index + 1].labelY - labelGap : height - padding.bottom);
+      svgParts.push('<path fill="none" stroke="', label.color, '" stroke-width="1" d="M', label.x, " ", label.y,
+        " L", width - padding.right + 4, " ", label.labelY, '"/>');
+      const shortName = label.player.name.length > 10 ? label.player.name.slice(0, 9) + "…" : label.player.name;
+      svgParts.push('<text class="chart-line-label" direction="rtl" text-anchor="end" fill="', label.color, '" x="',
+        width - padding.right + 7, '" y="', label.labelY,
+        '"><title>', escapeSvgText(label.player.name), '</title>', escapeSvgText(shortName), '</text>');
+    }
     svgParts.push("</svg>");
     elements.trendChart.innerHTML = svgParts.join("");
 
     elements.chartLegend.replaceChildren();
-    state.players.forEach(function (player, index) {
+    chartPlayers().forEach(function (player) {
+      const index = state.players.indexOf(player);
       const item = createElement("span", "legend-item");
       const dot = createElement("span", "legend-dot");
       dot.style.backgroundColor = CHART_COLORS[index % CHART_COLORS.length];
-      item.append(dot, document.createTextNode(player.name));
+      const shownCells = game.rows.slice(0, shownRound).filter(function (row) { return row.cells[player.id]; });
+      const score = shownCells.length ? shownCells[shownCells.length - 1].cells[player.id].total : player.initialScore;
+      const name = createElement("span", "legend-name", player.name + ": ");
+      name.title = player.name;
+      const scoreLabel = createElement("strong", "legend-score", player.joinedAfterRound > shownRound ? "טרם הצטרף/ה" : String(score));
+      item.append(dot, name, scoreLabel);
       elements.chartLegend.append(item);
     });
   }
@@ -638,7 +769,7 @@
     })));
     container.replaceChildren();
 
-    state.players.forEach(function (player) {
+    chartPlayers().forEach(function (player) {
       const value = values[player.id];
       const row = createElement("div", "win-row");
       const name = createElement("span", "win-name", player.name + (player.leftAfterRound !== null ? " (פרש/ה)" : ""));
@@ -673,19 +804,25 @@
     const corner = createElement("th", "", "סבב");
     corner.scope = "col";
     headings.append(corner);
-    state.players.forEach(function (player) {
+    chartPlayers().forEach(function (player) {
       const heading = createElement("th", "", player.name);
       heading.scope = "col";
+      heading.title = player.name;
       headings.append(heading);
     });
     head.append(headings);
     const body = createElement("tbody");
-    game.rows.forEach(function (round, index) {
+    mapPage = Math.min(mapPage, Math.max(0, Math.ceil(game.rows.length / 3) - 1));
+    document.getElementById("map-position").textContent = "סיבובים " + (mapPage * 3 + 1) + "–" + Math.min(game.rows.length, mapPage * 3 + 3);
+    document.getElementById("previous-map").disabled = mapPage === 0;
+    document.getElementById("next-map").disabled = (mapPage + 1) * 3 >= game.rows.length;
+    game.rows.slice(mapPage * 3, mapPage * 3 + 3).forEach(function (round, offset) {
+      const index = mapPage * 3 + offset;
       const row = createElement("tr");
       const heading = createElement("th", "", String(index + 1));
       heading.scope = "row";
       row.append(heading);
-      state.players.forEach(function (player) {
+      chartPlayers().forEach(function (player) {
         const data = round.cells[player.id];
         const cell = createElement("td", "", data ? String(data.entered) : "—");
         if (data && data.entered !== 0) {
@@ -802,6 +939,7 @@
   }
 
   function openDialog(dialog) {
+    stopReplay();
     if (typeof dialog.showModal === "function") {
       dialog.showModal();
     } else {
@@ -868,6 +1006,8 @@
       elements.mobileTabs.forEach(function (candidate) {
         candidate.classList.toggle("active", candidate === tab);
       });
+      if (view !== "dashboard") stopReplay();
+      updateChartLayout();
     });
   });
 
@@ -949,5 +1089,52 @@
     calculateGame: calculateGame
   };
 
+  document.getElementById("replay-toggle").addEventListener("click", function () {
+    if (replayTimer) stopReplay(); else startReplay();
+  });
+  document.getElementById("replay-reset").addEventListener("click", function () {
+    stopReplay();
+    replayRound = null;
+    renderTrendChart(dashboardGame);
+  });
+  document.getElementById("replay-round").addEventListener("input", function (event) {
+    stopReplay();
+    replayRound = Number(event.target.value);
+    renderTrendChart(dashboardGame);
+  });
+  document.getElementById("replay-speed").addEventListener("change", function () {
+    if (replayTimer) startReplay();
+  });
+  document.getElementById("rotate-charts").addEventListener("click", function () {
+    autoRotate = !autoRotate;
+    updateChartLayout();
+  });
+  ["previous-chart", "next-chart"].forEach(function (id, index) {
+    document.getElementById(id).addEventListener("click", function () {
+      stopReplay();
+      replayRound = null;
+      autoRotate = false;
+      selectedChart = (selectedChart + (index ? 1 : 3)) % 4;
+      refreshCharts();
+      updateChartLayout();
+    });
+  });
+  ["previous-chart-players", "next-chart-players"].forEach(function (id, index) {
+    document.getElementById(id).addEventListener("click", function () {
+      chartPlayerPage += index ? 1 : -1;
+      chartPlayerPage = Math.max(0, chartPlayerPage);
+      refreshCharts();
+      updateChartLayout();
+    });
+  });
+  ["previous-map", "next-map"].forEach(function (id, index) {
+    document.getElementById(id).addEventListener("click", function () {
+      mapPage = Math.max(0, mapPage + (index ? 1 : -1));
+      renderAdditionalCharts(dashboardGame);
+    });
+  });
+  document.addEventListener("visibilitychange", function () { if (document.hidden) stopReplay(); });
+  window.addEventListener("pagehide", function () { stopReplay(); clearInterval(rotationTimer); });
+  new ResizeObserver(updateChartLayout).observe(document.getElementById("chart-stage"));
   render();
 }());
